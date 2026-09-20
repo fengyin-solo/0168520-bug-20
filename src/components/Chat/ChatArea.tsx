@@ -31,16 +31,23 @@ export function ChatArea() {
     createConversation,
   } = useChatStore();
 
-  const { config, isValid: isConfigValid } = useConfigStore();
+  const { config, isValid: isConfigValid, errors: configErrors } = useConfigStore();
   const { setConfigPanelVisible } = useUIStore();
 
   const conversation = getActiveConversation();
   const messages = conversation?.messages || [];
 
+  const sendDisabledReason =
+    Object.values(configErrors).find(Boolean) ?? '请先在设置中完善 API Key 与参数配置';
+
   const handleSend = useCallback(
     async (content: string) => {
-      if (!isConfigValid) {
-        message.warning('请先配置 API Key');
+      // 发请求之前用同一份校验结果再校验一次当前配置
+      const validation = useConfigStore.getState().validateCurrentConfig();
+      if (!validation.isValid) {
+        const reason =
+          Object.values(validation.errors).find(Boolean) ?? '请先完成配置';
+        message.warning(reason);
         setConfigPanelVisible(true);
         return;
       }
@@ -112,7 +119,6 @@ export function ChatArea() {
     },
     [
       activeConversationId,
-      isConfigValid,
       config,
       messages,
       addMessage,
@@ -143,6 +149,8 @@ export function ChatArea() {
         isLoading={false}
         isStreaming={isStreaming}
         disabled={false}
+        sendDisabled={!isConfigValid}
+        sendDisabledReason={sendDisabledReason}
       />
     </div>
   );

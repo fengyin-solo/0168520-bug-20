@@ -47,8 +47,12 @@ export function useChat() {
         return;
       }
 
-      if (!isConfigValid) {
-        message.warning('请先配置 API Key');
+      // 发请求之前用同一份校验结果再校验一次当前配置
+      const validation = useConfigStore.getState().validateCurrentConfig();
+      if (!validation.isValid) {
+        const reason =
+          Object.values(validation.errors).find(Boolean) ?? '请先完成配置';
+        message.warning(reason);
         setConfigPanelVisible(true);
         return;
       }
@@ -109,7 +113,6 @@ export function useChat() {
     },
     [
       activeConversationId,
-      isConfigValid,
       config,
       messages,
       addMessage,

@@ -4,9 +4,9 @@ import { beforeAll, afterAll, afterEach } from 'vitest'
 const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
-    getItem: (key: string) => store[key] || null,
+    getItem: (key: string) => (Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null),
     setItem: (key: string, value: string) => {
-      store[key] = value
+      store[key] = String(value)
     },
     removeItem: (key: string) => {
       delete store[key]
@@ -14,15 +14,27 @@ const localStorageMock = (() => {
     clear: () => {
       store = {}
     },
+    key: (index: number) => Object.keys(store)[index] ?? null,
+    get length() {
+      return Object.keys(store).length
+    },
   }
 })()
 
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
+// node 环境下没有 window；jsdom 环境下直接挂到 window
+const globalScope = globalThis as unknown as { window?: unknown; localStorage: Storage }
 
 beforeAll(() => {
-  // Setup before all tests
+  if (!globalScope.window) {
+    Object.defineProperty(globalScope, 'window', {
+      value: globalScope,
+      configurable: true,
+    })
+  }
+  Object.defineProperty(globalScope, 'localStorage', {
+    value: localStorageMock,
+    configurable: true,
+  })
 })
 
 afterEach(() => {

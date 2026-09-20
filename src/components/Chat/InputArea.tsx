@@ -13,6 +13,9 @@ interface InputAreaProps {
   isLoading: boolean;
   isStreaming: boolean;
   disabled?: boolean;
+  /** 配置校验未通过时禁止发送（与输入面板同一份校验结果） */
+  sendDisabled?: boolean;
+  sendDisabledReason?: string;
   placeholder?: string;
 }
 
@@ -25,6 +28,8 @@ export function InputArea({
   isLoading,
   isStreaming,
   disabled = false,
+  sendDisabled = false,
+  sendDisabledReason = '请先在设置中完善 API Key 与参数配置',
   placeholder = '输入消息，按 Enter 发送，Shift + Enter 换行',
 }: InputAreaProps) {
   const [content, setContent] = useState('');
@@ -55,6 +60,13 @@ export function InputArea({
       return;
     }
 
+    // 配置校验在 ChatArea 发送前会用同一份结果再拦截一次，
+    // 这里仅给出按钮层的提示，避免误触发出请求
+    if (sendDisabled) {
+      message.warning(sendDisabledReason);
+      return;
+    }
+
     onSend(content.trim());
     setContent('');
 
@@ -62,7 +74,7 @@ export function InputArea({
     setTimeout(() => {
       textAreaRef.current?.focus();
     }, 0);
-  }, [content, isLoading, isStreaming, onSend]);
+  }, [content, isLoading, isStreaming, sendDisabled, sendDisabledReason, onSend]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -83,6 +95,7 @@ export function InputArea({
 
   const isDisabled = disabled || (!isStreaming && isLoading);
   const showStopButton = isStreaming;
+  const sendButtonDisabled = isDisabled || !content.trim() || sendDisabled;
 
   return (
     <div className="input-area">
@@ -125,16 +138,18 @@ export function InputArea({
               停止
             </Button>
           ) : (
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              loading={isLoading}
-              disabled={isDisabled || !content.trim()}
-              className="send-button"
-            >
-              发送
-            </Button>
+            <Tooltip title={sendDisabled ? sendDisabledReason : undefined}>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSend}
+                loading={isLoading}
+                disabled={sendButtonDisabled}
+                className="send-button"
+              >
+                发送
+              </Button>
+            </Tooltip>
           )}
           </div>
         </div>

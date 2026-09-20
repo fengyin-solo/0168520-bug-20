@@ -18,6 +18,8 @@ export function ConfigPanel() {
     updateConfig,
     resetConfig,
     validateCurrentConfig,
+    setTemperature,
+    setMaxTokens,
   } = useConfigStore();
 
   const { configPanelVisible, setConfigPanelVisible, isMobile } = useUIStore();
@@ -27,11 +29,14 @@ export function ConfigPanel() {
   };
 
   const handleSave = () => {
-    if (validateCurrentConfig()) {
+    // 保存前用同一份口径再校验一次，并写出具体原因
+    const validation = validateCurrentConfig();
+    if (validation.isValid) {
       message.success('配置已保存');
       handleClose();
     } else {
-      message.error('请检查配置项');
+      const reasons = Object.values(validation.errors).filter(Boolean);
+      message.error(reasons[0] ?? '请检查配置项');
     }
   };
 
@@ -86,8 +91,9 @@ export function ConfigPanel() {
           <ParameterSlider
             temperature={config.temperature}
             maxTokens={config.maxTokens}
-            onTemperatureChange={(value) => updateConfig({ temperature: value })}
-            onMaxTokensChange={(value) => updateConfig({ maxTokens: value })}
+            errors={errors}
+            onTemperatureChange={setTemperature}
+            onMaxTokensChange={setMaxTokens}
           />
         </section>
       </div>
