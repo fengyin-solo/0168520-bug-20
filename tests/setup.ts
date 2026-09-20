@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, afterEach } from 'vitest'
 
-// Mock localStorage
+// Mock localStorage（同时兼容 node 与浏览器测试环境）
 const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
@@ -17,9 +17,10 @@ const localStorageMock = (() => {
   }
 })()
 
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
+const globalScope = (typeof window !== 'undefined' ? window : globalThis) as unknown as {
+  localStorage?: typeof localStorageMock
+}
+globalScope.localStorage = localStorageMock
 
 beforeAll(() => {
   // Setup before all tests

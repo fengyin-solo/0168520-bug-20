@@ -6,6 +6,7 @@ import { useUIStore } from '../stores/uiStore';
 import { sendMessageStream } from '../services/api';
 import { createStreamHandler, toMessageStats } from '../services/stream';
 import { parseError, logError, shouldShowConfigPanel } from '../services/errorHandler';
+import { validateConfig } from '../utils/validators';
 import type { APIMessage } from '../types';
 
 // 创建流处理器实例
@@ -31,7 +32,7 @@ export function useChat() {
     cancelStreaming,
   } = useChatStore();
 
-  const { config, isValid: isConfigValid } = useConfigStore();
+  const { config } = useConfigStore();
   const { setConfigPanelVisible } = useUIStore();
 
   const conversation = getActiveConversation();
@@ -47,8 +48,12 @@ export function useChat() {
         return;
       }
 
-      if (!isConfigValid) {
-        message.warning('请先配置 API Key');
+      // 发送前用同一份判定结果再校验一次（不依赖可能过期的渲染快照）
+      const currentConfig = useConfigStore.getState().config;
+      const validation = validateConfig(currentConfig);
+      if (!validation.isValid) {
+        message.warning(Object.values(validation.errors)[0] || '请先完成配置');
+        useConfigStore.getState().validateCurrentConfig();
         setConfigPanelVisible(true);
         return;
       }
@@ -109,7 +114,6 @@ export function useChat() {
     },
     [
       activeConversationId,
-      isConfigValid,
       config,
       messages,
       addMessage,
@@ -155,7 +159,6 @@ export function useChat() {
     messages,
     isStreaming,
     streamingMessageId,
-    isConfigValid,
 
     // Actions
     sendMessage,

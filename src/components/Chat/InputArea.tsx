@@ -13,6 +13,8 @@ interface InputAreaProps {
   isLoading: boolean;
   isStreaming: boolean;
   disabled?: boolean;
+  /** 配置不允许发送的原因（来自与配置面板同源的校验结果）；存在时禁用发送 */
+  sendDisabledReason?: string;
   placeholder?: string;
 }
 
@@ -25,6 +27,7 @@ export function InputArea({
   isLoading,
   isStreaming,
   disabled = false,
+  sendDisabledReason,
   placeholder = '输入消息，按 Enter 发送，Shift + Enter 换行',
 }: InputAreaProps) {
   const [content, setContent] = useState('');
@@ -51,6 +54,11 @@ export function InputArea({
       return;
     }
 
+    if (sendDisabledReason) {
+      message.warning(sendDisabledReason);
+      return;
+    }
+
     if (isLoading || isStreaming) {
       return;
     }
@@ -62,7 +70,7 @@ export function InputArea({
     setTimeout(() => {
       textAreaRef.current?.focus();
     }, 0);
-  }, [content, isLoading, isStreaming, onSend]);
+  }, [content, sendDisabledReason, isLoading, isStreaming, onSend]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -125,16 +133,20 @@ export function InputArea({
               停止
             </Button>
           ) : (
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              loading={isLoading}
-              disabled={isDisabled || !content.trim()}
-              className="send-button"
-            >
-              发送
-            </Button>
+            <Tooltip title={sendDisabledReason}>
+              <span>
+                <Button
+                  type="primary"
+                  icon={<SendOutlined />}
+                  onClick={handleSend}
+                  loading={isLoading}
+                  disabled={isDisabled || !content.trim() || !!sendDisabledReason}
+                  className="send-button"
+                >
+                  发送
+                </Button>
+              </span>
+            </Tooltip>
           )}
           </div>
         </div>

@@ -5,6 +5,7 @@ import { InputArea } from './InputArea';
 import { useChatStore } from '../../stores/chatStore';
 import { useConfigStore } from '../../stores/configStore';
 import { sendMessageStream } from '../../services/api';
+import { validateConfig } from '../../utils/validators';
 import { createStreamHandler, toMessageStats } from '../../services/stream';
 import { parseError, logError, shouldShowConfigPanel } from '../../services/errorHandler';
 import { useUIStore } from '../../stores/uiStore';
@@ -31,16 +32,23 @@ export function ChatArea() {
     createConversation,
   } = useChatStore();
 
-  const { config, isValid: isConfigValid } = useConfigStore();
+  const { config, errors: configErrors } = useConfigStore();
   const { setConfigPanelVisible } = useUIStore();
 
   const conversation = getActiveConversation();
   const messages = conversation?.messages || [];
 
+  // 与输入入口、发送前复核同源的判定结果：存在任何非法配置时给出第一条原因
+  const configInvalidReason = Object.values(configErrors)[0];
+
   const handleSend = useCallback(
     async (content: string) => {
-      if (!isConfigValid) {
-        message.warning('请先配置 API Key');
+      // 发送前用同一份判定结果再校验一次（不依赖可能过期的渲染快照）
+      const currentConfig = useConfigStore.getState().config;
+      const validation = validateConfig(currentConfig);
+      if (!validation.isValid) {
+        message.warning(Object.values(validation.errors)[0] || '请先完成配置');
+        useConfigStore.getState().validateCurrentConfig();
         setConfigPanelVisible(true);
         return;
       }
@@ -112,7 +120,6 @@ export function ChatArea() {
     },
     [
       activeConversationId,
-      isConfigValid,
       config,
       messages,
       addMessage,
@@ -143,6 +150,7 @@ export function ChatArea() {
         isLoading={false}
         isStreaming={isStreaming}
         disabled={false}
+        sendDisabledReason={configInvalidReason}
       />
     </div>
   );

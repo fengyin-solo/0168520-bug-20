@@ -1,5 +1,32 @@
 import OpenAI from 'openai';
 import type { APIConfig, APIMessage } from '../types';
+import { validateConfig } from '../utils/validators';
+
+/**
+ * 配置校验失败错误：发送前复核未通过时抛出
+ */
+export class ConfigValidationError extends Error {
+  /** 与输入入口同源的每个字段的失败原因 */
+  readonly errors: Record<string, string>;
+
+  constructor(errors: Record<string, string>) {
+    const firstReason = Object.values(errors)[0] ?? '配置无效';
+    super(firstReason);
+    this.name = 'ConfigValidationError';
+    this.errors = errors;
+  }
+}
+
+/**
+ * 发请求前的最后一道校验：使用与配置面板、输入入口完全相同的判定结果。
+ * 任何越界/非法取值都在这里被拦住，不会发出请求。
+ */
+function assertConfigValid(config: APIConfig): void {
+  const result = validateConfig(config);
+  if (!result.isValid) {
+    throw new ConfigValidationError(result.errors);
+  }
+}
 
 /**
  * 创建 OpenAI 客户端实例
@@ -22,6 +49,8 @@ export async function* sendMessageStream(
   messages: APIMessage[],
   config: APIConfig
 ): AsyncGenerator<string, void, unknown> {
+  assertConfigValid(config);
+
   const client = createClient(config);
   
   const stream = await client.chat.completions.create({
@@ -60,8 +89,10 @@ export async function sendMessage(
     totalTokens: number;
   };
 }> {
+  assertConfigValid(config);
+
   const client = createClient(config);
-  
+
   const response = await client.chat.completions.create({
     model: config.model,
     messages: messages.map(msg => ({

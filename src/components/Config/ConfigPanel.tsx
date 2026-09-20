@@ -31,7 +31,9 @@ export function ConfigPanel() {
       message.success('配置已保存');
       handleClose();
     } else {
-      message.error('请检查配置项');
+      // 展示同一份判定结果中的具体原因
+      const firstError = Object.values(useConfigStore.getState().errors)[0];
+      message.error(firstError || '请检查配置项');
     }
   };
 
@@ -86,6 +88,7 @@ export function ConfigPanel() {
           <ParameterSlider
             temperature={config.temperature}
             maxTokens={config.maxTokens}
+            errors={errors}
             onTemperatureChange={(value) => updateConfig({ temperature: value })}
             onMaxTokensChange={(value) => updateConfig({ maxTokens: value })}
           />
